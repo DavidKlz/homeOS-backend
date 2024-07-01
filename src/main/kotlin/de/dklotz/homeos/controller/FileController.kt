@@ -2,7 +2,7 @@ package de.dklotz.homeos.controller
 
 import de.dklotz.homeos.dto.FileDTO
 import de.dklotz.homeos.dto.FileListDTO
-import de.dklotz.homeserver.services.FileService
+import de.dklotz.homeos.services.FileService
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -18,7 +18,7 @@ class FileController(val service: FileService) {
     }
 
     @GetMapping("/all")
-    fun getAll() : List<FileListDTO> {
+    fun getAll() : List<FileDTO> {
         return service.getAllFiles()
     }
 

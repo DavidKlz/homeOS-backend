@@ -1,6 +1,6 @@
 package de.dklotz.homeos.controller
 
-import de.dklotz.homeserver.services.MetaInfoService
+import de.dklotz.homeos.services.MetaInfoService
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 

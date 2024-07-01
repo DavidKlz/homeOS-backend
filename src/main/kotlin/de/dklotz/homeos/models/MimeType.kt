@@ -1,7 +1,5 @@
 package de.dklotz.homeos.models
 
-import java.util.Collections
-
 enum class MimeType(val type: String, val extensions: List<String>) {
     VIDEO_MPEG("video/mpeg", listOf("mpeg", "mpg", "mpe")),
     VIDEO_MP4("video/mp4", listOf("mp4", "m4v")),
