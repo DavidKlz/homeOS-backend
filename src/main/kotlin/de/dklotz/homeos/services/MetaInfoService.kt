@@ -10,36 +10,39 @@ import java.util.*
 class MetaInfoService(val repository: MetaInfoRepository) {
     fun getAllMetaInfo(): List<MetaInfoDTO> {
         return repository.findAll().map {
-            MetaInfoDTO(id = it.id!!, label = it.label, value = it.value)
+            MetaInfoDTO(id = it.id!!, type = it.type, value = it.value)
         }
     }
 
     fun getAllMetaInfoByLabel(label: String): List<MetaInfoDTO> {
-        return repository.findAllByLabel(label).map { MetaInfoDTO(id = it.id!!, label = it.label, value = it.value) }
+        return repository.findAllByType(label).map { MetaInfoDTO(id = it.id!!, type = it.type, value = it.value) }
     }
 
     fun getMetaInfo(id: Long): MetaInfoDTO {
         return repository.findById(id).map {
-            MetaInfoDTO(id = it.id!!, label = it.label, value = it.value)
+            MetaInfoDTO(id = it.id!!, type = it.type, value = it.value)
         }.orElseGet(null)
     }
 
-    fun addMetaInfo(metaInfo: MetaInfoDTO) : MetaInfoDTO {
-        val entity = repository.save(MetaInfoEntity(
-            id = null,
-            label = metaInfo.label,
-            value = metaInfo.value,
-            files = Collections.emptySet(),
-        ))
+    fun safeMetaInfo(metaInfo: MetaInfoDTO) : MetaInfoDTO {
+        if(metaInfo.id != null) {
+            val id = metaInfo.id!!
+            return repository.findById(id).map {
+                val save = repository.save(MetaInfoEntity(id = id, type = metaInfo.type, value = metaInfo.value, files = it.files))
+                MetaInfoDTO(id = save.id!!, type = metaInfo.type, value = metaInfo.value)
+            }.orElseGet(null)
+        } else {
+            val entity = repository.save(
+                MetaInfoEntity(
+                    id = null,
+                    type = metaInfo.type,
+                    value = metaInfo.value,
+                    files = Collections.emptySet(),
+                )
+            )
 
-        return MetaInfoDTO(id = entity.id!!, label = metaInfo.label, value = metaInfo.value)
-    }
-
-    fun updateMetaInfo(id: Long, metaInfo: MetaInfoDTO) : MetaInfoDTO {
-        return repository.findById(id).map {
-            val save = repository.save(MetaInfoEntity(id = id, label = metaInfo.label, value = metaInfo.value, files = it.files))
-            MetaInfoDTO(id = save.id!!, label = metaInfo.label, value = metaInfo.value)
-        }.orElseGet(null)
+            return MetaInfoDTO(id = entity.id!!, type = metaInfo.type, value = metaInfo.value)
+        }
     }
 
     fun removeMetaInfo(id: Long) : Boolean {

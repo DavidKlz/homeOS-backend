@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface MetaInfoRepository : JpaRepository<MetaInfoEntity, Long> {
-    fun findAllByLabel(label: String): Iterable<MetaInfoEntity>
+    fun findAllByType(type: String): Iterable<MetaInfoEntity>
 }

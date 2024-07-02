@@ -7,12 +7,14 @@ import de.dklotz.homeos.entities.FileEntity
 import de.dklotz.homeos.models.MimeType
 import de.dklotz.homeos.repositories.FileRepository
 import de.dklotz.homeos.repositories.MetaInfoRepository
+import jakarta.annotation.PostConstruct
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.util.*
 
@@ -29,7 +31,7 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
                     MetaInfoDTO(
                         id = mi.id!!,
                         value = mi.value,
-                        label = mi.label,
+                        type = mi.type,
                     )
                 }
             )
@@ -55,7 +57,7 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
                     MetaInfoDTO(
                         id = mi.id!!,
                         value = mi.value,
-                        label = mi.label,
+                        type = mi.type,
                     )
                 }
             )
@@ -71,22 +73,12 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
                     break;
                 }
                 val extension = file.name.substringAfterLast('.')
-                val filename = "FILE_${i}u${UUID.randomUUID()}.$extension"
-                val path = "E:/Server/$filename"
-                file.inputStream.use {
-                    Files.copy(it, Path.of(path), StandardCopyOption.REPLACE_EXISTING)
-                }
 
-                val contentType = MimeType.getMimeType(extension) ?: throw Exception("Unknown extension $extension")
-
-                repository.save(FileEntity(
-                    id = null,
-                    name = filename,
-                    metaInfos = Collections.emptySet(),
-                    favorite = false,
-                    location = path,
-                    mimetype = contentType.type,
-                ))
+                storeFile(extension = extension, count = i, f = { path ->
+                    file.inputStream.use {
+                        Files.copy(it, Path.of(path), StandardCopyOption.REPLACE_EXISTING)
+                    }
+                })
                 i+=1
             } catch(e: IOException) {
                 // TODO: Log Error
@@ -95,27 +87,32 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
         }
     }
 
+    private fun storeFile(extension: String, count: Int, f: (String) -> Any) {
+        val contentType = MimeType.getMimeType(extension) ?: throw Exception("Unknown extension $extension")
+        val filename = "FILE_${count}u${UUID.randomUUID()}.$extension"
+        val path = "./Server/${contentType.getFolderName()}/$filename"
+
+        f.invoke(path)
+
+        repository.save(FileEntity(
+            id = null,
+            name = filename,
+            metaInfos = Collections.emptySet(),
+            favorite = false,
+            location = path,
+            mimetype = contentType.type,
+        ))
+    }
+
     fun syncFiles() {
-        val directory = File("E:/In")
+        val directory = File("./Sync")
         val files = directory.listFiles()?.filter { it.isFile }
         var i = 1
         files?.forEach {
             val extension = it.name.substringAfterLast('.')
-            val filename = "FILE_${i}u${UUID.randomUUID()}.$extension"
-            val path = "E:/Server/$filename"
-
-            Files.move(it.toPath(), Path.of(path), StandardCopyOption.REPLACE_EXISTING)
-
-            val contentType = MimeType.getMimeType(extension) ?: throw Exception("Unknown extension $extension")
-
-            repository.save(FileEntity(
-                id = null,
-                name = filename,
-                metaInfos = Collections.emptySet(),
-                favorite = false,
-                location = path,
-                mimetype = contentType.type,
-            ))
+            storeFile(extension = extension, count = i, f = { path ->
+                Files.move(it.toPath(), Path.of(path), StandardCopyOption.REPLACE_EXISTING)
+            })
             i+=1
         }
 
@@ -134,7 +131,7 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
                 MetaInfoDTO(
                     id = mi.id!!,
                     value = mi.value,
-                    label = mi.label,
+                    type = mi.type,
                 )
             }
         )
@@ -152,5 +149,13 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
         repository.deleteById(id)
         // TODO: Remove from Disk
         return true
+    }
+
+    @PostConstruct
+    fun createFolders() {
+        Files.createDirectories(Paths.get("./Sync"))
+        Files.createDirectories(Paths.get("./Server/Image"))
+        Files.createDirectories(Paths.get("./Server/Video"))
+        Files.createDirectories(Paths.get("./Server/Animation"))
     }
 }

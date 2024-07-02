@@ -15,7 +15,7 @@ import jakarta.persistence.UniqueConstraint
 data class MetaInfoEntity(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long?,
-    var label: String,
+    var type: String,
     var value: String,
     @ManyToMany
     var files: Set<FileEntity>,

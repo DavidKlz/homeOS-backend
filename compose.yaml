@@ -1,9 +1,10 @@
+name: 'homeos'
 services:
-  postgres:
+  homeOS_db:
     image: 'postgres:latest'
     environment:
-      - 'POSTGRES_DB=mydatabase'
-      - 'POSTGRES_PASSWORD=secret'
-      - 'POSTGRES_USER=myuser'
+      - 'POSTGRES_DB=homeOS'
+      - 'POSTGRES_PASSWORD=homeOSroot'
+      - 'POSTGRES_USER=homeOS'
     ports:
       - '5432'

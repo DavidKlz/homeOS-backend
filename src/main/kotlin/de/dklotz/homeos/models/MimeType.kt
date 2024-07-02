@@ -27,4 +27,12 @@ enum class MimeType(val type: String, val extensions: List<String>) {
             return entries.find { it.extensions.contains(extension.lowercase()) }
         }
     }
+
+    fun getFolderName() : String {
+        return when(this) {
+            VIDEO_MPEG, VIDEO_MP4, VIDEO_OGG, VIDEO_QUICKTIME, VIDEO_WEBM, VIDEO_X_MSVIDEO, VIDEO_X_SGI_MOVIE -> "Video"
+            IMAGE_BMP, IMAGE_CIS_COD, IMAGE_CMU_RASTER, IMAGE_FIF, IMAGE_IEF, IMAGE_JPEG, IMAGE_PNG, IMAGE_SVG_XML, IMAGE_TIFF, IMAGE_VASA, IMAGE_HEIC, IMAGE_WEBP -> "Image"
+            IMAGE_GIF -> "Animation"
+        }
+    }
 }
