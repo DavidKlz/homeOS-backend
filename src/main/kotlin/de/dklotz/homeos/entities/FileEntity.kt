@@ -15,5 +15,5 @@ data class FileEntity(
     var mimetype: String,
     var favorite: Boolean,
     @ManyToMany
-    var metaInfos: Set<MetaInfoEntity>
+    var metaInfos: MutableSet<MetaInfoEntity>
 )

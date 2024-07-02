@@ -13,9 +13,9 @@ class MetaInfoController(val service: MetaInfoService) {
         return service.getAllMetaInfo()
     }
 
-    @GetMapping("/all/{label}")
-    fun getAllMetaInfoByLabel(@PathVariable label: String): List<MetaInfoDTO> {
-        return service.getAllMetaInfoByLabel(label)
+    @GetMapping("/all/{type}")
+    fun getAllMetaInfoByType(@PathVariable type: String): List<MetaInfoDTO> {
+        return service.getAllMetaInfoByLabel(type)
     }
 
     @GetMapping("/{id}")
@@ -24,7 +24,7 @@ class MetaInfoController(val service: MetaInfoService) {
     }
 
     @PostMapping("/")
-    fun safeMetaInfo(metaInfo: MetaInfoDTO) : MetaInfoDTO {
+    fun safeMetaInfo(@RequestBody metaInfo: MetaInfoDTO) : MetaInfoDTO {
         return service.safeMetaInfo(metaInfo)
     }
 

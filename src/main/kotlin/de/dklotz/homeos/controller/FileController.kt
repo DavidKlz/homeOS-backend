@@ -1,10 +1,10 @@
 package de.dklotz.homeos.controller
 
 import de.dklotz.homeos.dto.FileDTO
-import de.dklotz.homeos.dto.FileListDTO
+import de.dklotz.homeos.dto.MetaToFileDTO
 import de.dklotz.homeos.services.FileService
-import jakarta.annotation.PostConstruct
 import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
@@ -21,6 +21,15 @@ class FileController(val service: FileService) {
     @GetMapping("/all")
     fun getAll() : List<FileDTO> {
         return service.getAllFiles()
+    }
+
+    @DeleteMapping("/{id}")
+    fun delete(@PathVariable id: Long) : ResponseEntity<Any> {
+        val success = service.deleteFile(id)
+        if(success) {
+            return ResponseEntity(HttpStatus.OK)
+        }
+        return ResponseEntity(HttpStatus.NOT_FOUND)
     }
 
     @GetMapping("/{id}")
@@ -45,5 +54,15 @@ class FileController(val service: FileService) {
     fun sync() : ResponseEntity<String> {
         service.syncFiles()
         return ResponseEntity.ok().build()
+    }
+
+    @PutMapping("/meta")
+    fun addMetaInfo(@RequestBody metaToFile: MetaToFileDTO) : FileDTO {
+        return service.addMetaInfo(id = metaToFile.fileId, metaInfoId = metaToFile.metaId)
+    }
+
+    @DeleteMapping("/meta/{fileId}/{metaId}")
+    fun removeMetaInfo(@PathVariable fileId: Long, @PathVariable metaId: Long) {
+        service.removeMetaInfo(id = fileId, metaInfoId = metaId)
     }
 }

@@ -10,7 +10,7 @@ import jakarta.persistence.UniqueConstraint
 
 @Entity(name = "metaInfo")
 @Table(name = "metaInfo", uniqueConstraints = [
-    UniqueConstraint(name = "MetaIndex", columnNames = ["label", "value"])
+    UniqueConstraint(name = "MetaIndex", columnNames = ["type", "value"])
 ])
 data class MetaInfoEntity(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,5 +18,5 @@ data class MetaInfoEntity(
     var type: String,
     var value: String,
     @ManyToMany
-    var files: Set<FileEntity>,
+    var files: MutableSet<FileEntity>,
 )

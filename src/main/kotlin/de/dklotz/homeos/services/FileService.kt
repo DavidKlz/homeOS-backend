@@ -121,7 +121,7 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
     fun addMetaInfo(id: Long, metaInfoId: Long): FileDTO {
         val file = repository.findById(id).get()
         val metaInfo = metaInfoRepository.findById(metaInfoId).get()
-        file.metaInfos.plus(metaInfo)
+        file.metaInfos.add(metaInfo)
         val save = repository.save(file)
         return FileDTO(
             id = id,
