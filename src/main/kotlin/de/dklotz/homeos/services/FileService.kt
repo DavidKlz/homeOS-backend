@@ -10,14 +10,11 @@ import de.dklotz.homeos.repositories.MetaInfoRepository
 import jakarta.annotation.PostConstruct
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
-import java.io.File
-import java.io.IOException
+import java.io.*
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.nio.file.StandardCopyOption
 import java.util.*
-
 
 @Service
 class FileService(val repository: FileRepository, val metaInfoRepository: MetaInfoRepository) {
@@ -27,6 +24,7 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
                 id = id,
                 name = it.name,
                 favorite = it.favorite,
+                isVideo = it.mimetype.isVideo(),
                 metaInfos = it.metaInfos.map { mi ->
                     MetaInfoDTO(
                         id = mi.id!!,
@@ -38,21 +36,33 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
         }
     }
 
-    fun serveFileInfos(id: Long) : Optional<ServeFileDTO> {
+    fun serveFileInfos(id: Long): Optional<ServeFileDTO> {
         return repository.findById(id).map {
             ServeFileDTO(
-                mimetype = it.mimetype,
-                file = Path.of(it.location).toFile().readBytes()
+                mimetype = it.mimetype.type,
+                file = Path.of(it.location).toFile()
+            )
+        }
+    }
+
+    fun serveThumbnailInfos(id: Long): Optional<ServeFileDTO> {
+        return repository.findById(id).map {
+            ServeFileDTO(
+                mimetype = MimeType.IMAGE_JPEG.type,
+                file = Path.of(it.thumbnailLocation).toFile()
             )
         }
     }
 
     fun getAllFiles(): List<FileDTO> {
-        return repository.findAll().map {
+        val result = repository.findAll()
+        result.sortWith { o1: FileEntity, o2: FileEntity -> o2.id!!.compareTo(o1.id!!) }
+        return result.map {
             FileDTO(
                 id = it.id!!,
-                name = it.name,
                 favorite = it.favorite,
+                isVideo = it.mimetype.isVideo(),
+                name = it.name,
                 metaInfos = it.metaInfos.map { mi ->
                     MetaInfoDTO(
                         id = mi.id!!,
@@ -64,44 +74,56 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
         }
     }
 
-    fun storeFile(files: Array<MultipartFile>) {
+    fun uploadFile(files: Array<MultipartFile>) {
         var i = 1
-        for(file in files) {
+        for (file in files) {
             try {
-                if(file.isEmpty) {
+                if (file.isEmpty) {
                     // TODO: Log empty file
                     break;
                 }
                 val extension = file.name.substringAfterLast('.')
 
-                storeFile(extension = extension, count = i, f = { path ->
-                    file.inputStream.use {
-                        Files.copy(it, Path.of(path), StandardCopyOption.REPLACE_EXISTING)
-                    }
-                })
-                i+=1
-            } catch(e: IOException) {
+                storeFile(extension = extension, count = i, inStream = file.inputStream)
+                i += 1
+            } catch (e: IOException) {
                 // TODO: Log Error
                 break;
             }
         }
     }
 
-    private fun storeFile(extension: String, count: Int, f: (String) -> Any) {
+    private fun storeFile(extension: String, count: Int, inStream: InputStream) {
         val contentType = MimeType.getMimeType(extension) ?: throw Exception("Unknown extension $extension")
-        val filename = "FILE_${count}u${UUID.randomUUID()}.$extension"
-        val path = "./Server/${contentType.getFolderName()}/$filename"
+        val filename = "FILE_${count}u${UUID.randomUUID()}"
+        val outFilename = "$filename.$extension"
+        val outPath = "./Server/${contentType.getFolderName()}/$outFilename"
 
-        f.invoke(path)
+        val thumbPath : String
 
-        repository.save(FileEntity(
-            id = null,
-            name = filename,
-            metaInfos = Collections.emptySet(),
-            favorite = false,
-            location = path,
-            mimetype = contentType.type,
-        ))
+        Files.write(Path.of(outPath), inStream.readAllBytes())
+
+        if(contentType.isVideo()) {
+            val thumbFilename = "$filename.jpg"
+            thumbPath = "./Server/${contentType.getFolderName()}/thumb/$thumbFilename"
+            Runtime.getRuntime().exec(arrayOf("ffmpeg", "-i", outPath, "-vf", "scale=\"360:-1\"", "-ss", "1", "-vframes", "1", thumbPath))
+        } else {
+            val thumbFilename = "$filename.jpg"
+            thumbPath = "./Server/${contentType.getFolderName()}/thumb/$thumbFilename"
+            Runtime.getRuntime().exec(arrayOf("ffmpeg", "-i", outPath, "-vf", "scale=\"360:-1\"", thumbPath))
+        }
+
+        repository.save(
+            FileEntity(
+                id = null,
+                name = filename,
+                metaInfos = Collections.emptySet(),
+                favorite = false,
+                location = outPath,
+                thumbnailLocation = thumbPath,
+                mimetype = contentType,
+            )
+        )
     }
 
     fun syncFiles() {
@@ -110,12 +132,13 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
         var i = 1
         files?.forEach {
             val extension = it.name.substringAfterLast('.')
-            storeFile(extension = extension, count = i, f = { path ->
-                Files.move(it.toPath(), Path.of(path), StandardCopyOption.REPLACE_EXISTING)
-            })
-            i+=1
-        }
+            it.inputStream().use { inStream ->
+                storeFile(extension = extension, count = i, inStream = inStream)
+            }
+            Files.deleteIfExists(it.toPath())
 
+            i += 1
+        }
     }
 
     fun addMetaInfo(id: Long, metaInfoId: Long): FileDTO {
@@ -127,6 +150,7 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
             id = id,
             name = save.name,
             favorite = save.favorite,
+            isVideo = save.mimetype.isVideo(),
             metaInfos = save.metaInfos.map { mi ->
                 MetaInfoDTO(
                     id = mi.id!!,
@@ -145,7 +169,7 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
         return true
     }
 
-    fun deleteFile(id: Long) : Boolean {
+    fun deleteFile(id: Long): Boolean {
         repository.deleteById(id)
         // TODO: Remove from Disk
         return true
@@ -154,8 +178,8 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
     @PostConstruct
     fun createFolders() {
         Files.createDirectories(Paths.get("./Sync"))
-        Files.createDirectories(Paths.get("./Server/Image"))
-        Files.createDirectories(Paths.get("./Server/Video"))
+        Files.createDirectories(Paths.get("./Server/Image/thumb"))
+        Files.createDirectories(Paths.get("./Server/Video/thumb"))
         Files.createDirectories(Paths.get("./Server/Animation"))
     }
 }

@@ -1,10 +1,7 @@
 package de.dklotz.homeos.entities
 
-import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.ManyToMany
+import de.dklotz.homeos.models.MimeType
+import jakarta.persistence.*
 
 @Entity(name="file")
 data class FileEntity(
@@ -12,7 +9,9 @@ data class FileEntity(
     var id: Long?,
     var name: String,
     var location: String,
-    var mimetype: String,
+    var thumbnailLocation: String,
+    @Enumerated(EnumType.STRING)
+    var mimetype: MimeType,
     var favorite: Boolean,
     @ManyToMany
     var metaInfos: MutableSet<MetaInfoEntity>

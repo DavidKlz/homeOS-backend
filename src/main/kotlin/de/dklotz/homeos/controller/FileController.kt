@@ -39,14 +39,26 @@ class FileController(val service: FileService) {
         if(file.isPresent) {
             val headers = HttpHeaders()
             headers.add("Content-Type", file.get().mimetype)
-            return ResponseEntity.ok().headers(headers).body(file.get().file)
+            return ResponseEntity.ok().headers(headers).body(file.get().file.readBytes())
+        }
+        return ResponseEntity.notFound().build()
+    }
+
+    @GetMapping("/thumb/{id}")
+    @ResponseBody
+    fun serveThumbnail(@PathVariable id: Long) : ResponseEntity<ByteArray> {
+        val file = service.serveThumbnailInfos(id)
+        if(file.isPresent) {
+            val headers = HttpHeaders()
+            headers.add("Content-Type", file.get().mimetype)
+            return ResponseEntity.ok().headers(headers).body(file.get().file.readBytes())
         }
         return ResponseEntity.notFound().build()
     }
 
     @PostMapping("/upload")
     fun handleFileUpload(@RequestParam("files") files: Array<MultipartFile>) : ResponseEntity<String> {
-        service.storeFile(files);
+        service.uploadFile(files);
         return ResponseEntity.ok().build()
     }
 
