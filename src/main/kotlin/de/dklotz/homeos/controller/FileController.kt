@@ -19,8 +19,8 @@ class FileController(val service: FileService) {
     }
 
     @GetMapping("/all")
-    fun getAll() : List<FileDTO> {
-        return service.getAllFiles()
+    fun getAll() : ResponseEntity<List<FileDTO>> {
+        return ResponseEntity.ok(service.getAllFiles())
     }
 
     @DeleteMapping("/{id}")

@@ -1,5 +1,6 @@
 package de.dklotz.homeos.services
 
+import de.dklotz.homeos.config.ServerConfig
 import de.dklotz.homeos.dto.FileDTO
 import de.dklotz.homeos.dto.MetaInfoDTO
 import de.dklotz.homeos.dto.ServeFileDTO
@@ -17,7 +18,7 @@ import java.nio.file.Paths
 import java.util.*
 
 @Service
-class FileService(val repository: FileRepository, val metaInfoRepository: MetaInfoRepository) {
+class FileService(val repository: FileRepository, val metaInfoRepository: MetaInfoRepository, val serverConfig: ServerConfig) {
     fun getFile(id: Long): Optional<FileDTO> {
         return repository.findById(id).map {
             FileDTO(
@@ -97,19 +98,16 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
         val contentType = MimeType.getMimeType(extension) ?: throw Exception("Unknown extension $extension")
         val filename = "FILE_${count}u${UUID.randomUUID()}"
         val outFilename = "$filename.$extension"
-        val outPath = "./Server/${contentType.getFolderName()}/$outFilename"
+        val outPath = "${getPath(contentType)}/$outFilename"
 
-        val thumbPath : String
+        val thumbFilename = "$filename.jpg"
+        val thumbPath = "${getThumbnailPath(contentType)}/$thumbFilename"
 
         Files.write(Path.of(outPath), inStream.readAllBytes())
 
         if(contentType.isVideo()) {
-            val thumbFilename = "$filename.jpg"
-            thumbPath = "./Server/${contentType.getFolderName()}/thumb/$thumbFilename"
             Runtime.getRuntime().exec(arrayOf("ffmpeg", "-i", outPath, "-vf", "scale=\"360:-1\"", "-ss", "1", "-vframes", "1", thumbPath))
         } else {
-            val thumbFilename = "$filename.jpg"
-            thumbPath = "./Server/${contentType.getFolderName()}/thumb/$thumbFilename"
             Runtime.getRuntime().exec(arrayOf("ffmpeg", "-i", outPath, "-vf", "scale=\"360:-1\"", thumbPath))
         }
 
@@ -127,7 +125,7 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
     }
 
     fun syncFiles() {
-        val directory = File("./Sync")
+        val directory = File(getSyncPath())
         val files = directory.listFiles()?.filter { it.isFile }
         var i = 1
         files?.forEach {
@@ -177,9 +175,21 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
 
     @PostConstruct
     fun createFolders() {
-        Files.createDirectories(Paths.get("./Sync"))
-        Files.createDirectories(Paths.get("./Server/Image/thumb"))
-        Files.createDirectories(Paths.get("./Server/Video/thumb"))
-        Files.createDirectories(Paths.get("./Server/Animation"))
+        Files.createDirectories(Paths.get(getSyncPath()))
+        Files.createDirectories(Paths.get(getThumbnailPath(MimeType.IMAGE_JPEG)))
+        Files.createDirectories(Paths.get(getThumbnailPath(MimeType.VIDEO_MP4)))
+        Files.createDirectories(Paths.get(getPath(MimeType.IMAGE_GIF)))
+    }
+
+    private fun getSyncPath() : String {
+        return "${serverConfig.root}/Sync"
+    }
+
+    private fun getPath(mime: MimeType) : String {
+        return "${serverConfig.root}/Server/${mime.getFolderName()}"
+    }
+
+    private fun getThumbnailPath(mime: MimeType) : String {
+        return "${getPath(mime)}/thumbnail"
     }
 }
