@@ -106,9 +106,9 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
         Files.write(Path.of(outPath), inStream.readAllBytes())
 
         if(contentType.isVideo()) {
-            Runtime.getRuntime().exec(arrayOf("ffmpeg", "-i", outPath, "-vf", "scale=\"360:-1\"", "-ss", "1", "-vframes", "1", thumbPath))
+            Runtime.getRuntime().exec(arrayOf("ffmpeg", "-i", outPath, "-vf", "scale=\"360:-1\"", "-ss", "1", "-vframes", "1", thumbPath)).waitFor()
         } else {
-            Runtime.getRuntime().exec(arrayOf("ffmpeg", "-i", outPath, "-vf", "scale=\"360:-1\"", thumbPath))
+            Runtime.getRuntime().exec(arrayOf("ffmpeg", "-i", outPath, "-vf", "scale=\"360:-1\"", thumbPath)).waitFor()
         }
 
         repository.save(
@@ -178,7 +178,7 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
         Files.createDirectories(Paths.get(getSyncPath()))
         Files.createDirectories(Paths.get(getThumbnailPath(MimeType.IMAGE_JPEG)))
         Files.createDirectories(Paths.get(getThumbnailPath(MimeType.VIDEO_MP4)))
-        Files.createDirectories(Paths.get(getPath(MimeType.IMAGE_GIF)))
+        Files.createDirectories(Paths.get(getThumbnailPath(MimeType.IMAGE_GIF)))
     }
 
     private fun getSyncPath() : String {
