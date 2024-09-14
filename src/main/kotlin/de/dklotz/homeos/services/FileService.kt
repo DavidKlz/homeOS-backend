@@ -9,13 +9,23 @@ import de.dklotz.homeos.models.MimeType
 import de.dklotz.homeos.repositories.FileRepository
 import de.dklotz.homeos.repositories.MetaInfoRepository
 import jakarta.annotation.PostConstruct
+import net.bramp.ffmpeg.FFmpeg
+import net.bramp.ffmpeg.FFmpegExecutor
+import net.bramp.ffmpeg.FFprobe
+import net.bramp.ffmpeg.builder.FFmpegBuilder
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
-import java.io.*
+import java.io.File
+import java.io.IOException
+import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
+import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
+import kotlin.math.roundToLong
+
 
 @Service
 class FileService(val repository: FileRepository, val metaInfoRepository: MetaInfoRepository, val serverConfig: ServerConfig) {
@@ -81,7 +91,7 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
             try {
                 if (file.isEmpty) {
                     // TODO: Log empty file
-                    break;
+                    break
                 }
                 val extension = file.name.substringAfterLast('.')
 
@@ -105,11 +115,7 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
 
         Files.write(Path.of(outPath), inStream.readAllBytes())
 
-        if(contentType.isVideo()) {
-            Runtime.getRuntime().exec(arrayOf("ffmpeg", "-i", outPath, "-vf", "scale=\"360:-1\"", "-ss", "1", "-vframes", "1", thumbPath)).waitFor()
-        } else {
-            Runtime.getRuntime().exec(arrayOf("ffmpeg", "-i", outPath, "-vf", "scale=\"360:-1\"", thumbPath)).waitFor()
-        }
+        createImageThumb(outPath, thumbPath, contentType.isVideo())
 
         repository.save(
             FileEntity(
@@ -122,6 +128,38 @@ class FileService(val repository: FileRepository, val metaInfoRepository: MetaIn
                 mimetype = contentType,
             )
         )
+    }
+
+    fun createImageThumb(inDir : String, outDir : String, isVideo : Boolean) {
+        val ffmpeg = FFmpeg("/usr/bin/ffmpeg")
+        val ffprobe = FFprobe("/usr/bin/ffprobe")
+        val builder: FFmpegBuilder
+
+        val inProbe = ffprobe.probe(inDir)
+        val probeStream = inProbe.getStreams()[0]
+        val thumbWidth = 360
+        val thumbHeight =  (probeStream.height / probeStream.width) * thumbWidth
+
+        if (isVideo) {
+            val duration = (inProbe.getFormat().duration / 2).roundToLong()
+            builder = FFmpegBuilder()
+                .setInput(inDir)
+                .addOutput(outDir)
+                .setVideoResolution(thumbWidth, thumbHeight)
+                .setFrames(1)
+                .setStartOffset(duration, TimeUnit.SECONDS)
+                .done()
+        } else {
+            builder = FFmpegBuilder()
+                .setInput(inDir)
+                .addOutput(outDir)
+                .setVideoResolution(thumbWidth, thumbHeight)
+                .setFrames(1)
+                .done()
+        }
+
+        val executor = FFmpegExecutor(ffmpeg, ffprobe)
+        executor.createJob(builder).run()
     }
 
     fun syncFiles() {
